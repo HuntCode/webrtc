@@ -1,8 +1,15 @@
-﻿#pragma once
+﻿#ifndef SIGNALING_SOCKET_H
+#define SIGNALING_SOCKET_H
 
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
+
+enum class Role {
+  Unknown,
+  Caller,
+  Callee,
+};
 
 class SignalingSocket : public QObject {
   Q_OBJECT
@@ -10,19 +17,17 @@ class SignalingSocket : public QObject {
  public:
   explicit SignalingSocket(QObject* parent = nullptr);
 
-  // 启动监听作为 callee
+
   void startListening(quint16 port);
-
-  // 作为 caller 连接到远端
   void connectToHost(const QString& ip, quint16 port);
-
-  // 发送 JSON 字符串
   void sendMessage(const QString& json);
+  void setRole(Role role);
+  Role role() const { return role_; }
 
- signals:
-  void messageReceived(const QString& json);
+signals:
   void connected();
   void disconnected();
+  void messageReceived(const QString& json);
   void errorOccurred(const QString& error);
 
  private slots:
@@ -35,4 +40,7 @@ class SignalingSocket : public QObject {
   QTcpServer* server_ = nullptr;
   QTcpSocket* socket_ = nullptr;
   QByteArray buffer_;
+  Role role_ = Role::Unknown;
 };
+
+#endif  // SIGNALING_SOCKET_H

@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef QTTESTDRIVER_H
+#define QTTESTDRIVER_H
 
 #include <QtWidgets/QMainWindow>
 #include "ui_QtTestDriver.h"
@@ -24,5 +25,6 @@ private slots:
 private:
     Ui::QtTestDriverClass ui;
     SignalingSocket* signalingSocket_;
-    bool isCaller_ = false;
 };
+
+#endif  // QTTESTDRIVER_H
