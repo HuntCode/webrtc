@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>559</width>
-    <height>462</height>
+    <width>557</width>
+    <height>455</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,6 +23,9 @@
       <height>20</height>
      </rect>
     </property>
+    <property name="text">
+     <string>192.168.123.</string>
+    </property>
    </widget>
    <widget class="QLineEdit" name="lineEdit_port">
     <property name="geometry">
@@ -32,6 +35,9 @@
       <width>71</width>
       <height>20</height>
      </rect>
+    </property>
+    <property name="text">
+     <string>8888</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_connect">
@@ -112,14 +118,40 @@
      <string>:</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="pushButton_startPush">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>10</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>开始投屏</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_stopPush">
+    <property name="geometry">
+     <rect>
+      <x>470</x>
+      <y>10</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>结束投屏</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>559</width>
-     <height>21</height>
+     <width>557</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>
