@@ -11,6 +11,10 @@ void SignalingSocket::setRole(Role role) {
     role_ = role;
 }
 
+bool SignalingSocket::isConnected() const {
+    return socket_ && socket_->state() == QAbstractSocket::ConnectedState;
+}
+
 void SignalingSocket::startListening(quint16 port) {
     if (!server_->listen(QHostAddress::Any, port)) {
       emit errorOccurred("监听失败: " + server_->errorString());

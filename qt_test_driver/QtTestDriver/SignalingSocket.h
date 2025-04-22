@@ -23,6 +23,7 @@ class SignalingSocket : public QObject {
   void sendMessage(const QString& json);
   void setRole(Role role);
   Role role() const { return role_; }
+  bool isConnected() const;
 
 signals:
   void connected();
