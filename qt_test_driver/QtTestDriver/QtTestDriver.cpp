@@ -90,7 +90,7 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
     QString type = obj["type"].toString();
     QString sdp = obj["sdp"].toString();
 
-    if ((type == "offer" || type == "answer") && !sdp.isEmpty()) {
+    if (type == "offer" && !sdp.isEmpty()) {
         if (!webrtcClient_->init()) {
           qDebug() << "WebRTC 初始化失败";
           return;
@@ -106,10 +106,15 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
             webrtcClient_->createAnswer();
         }
 
+    } else if (type == "answer" && !sdp.isEmpty()) {
+        // 无论 caller 还是 callee 都要先设置远端 SDP
+        webrtcClient_->setRemoteDescription(sdp.toStdString(),
+                                            type.toStdString());
+
     } else if (type == "ice") {
-      webrtcClient_->addIceCandidate(obj["sdpMid"].toString().toStdString(),
+      webrtcClient_->addIceCandidate(obj["sdpMid"].toString().toUtf8().constData(),
                                      obj["sdpMLineIndex"].toInt(),
-                                     obj["candidate"].toString().toStdString());
+                                     obj["candidate"].toString().toUtf8().constData());
     }
 }
 
