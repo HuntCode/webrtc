@@ -5,16 +5,16 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 
-enum class Role {
-  Unknown,
-  Caller,
-  Callee,
-};
-
 class SignalingSocket : public QObject {
   Q_OBJECT
 
  public:
+  enum class Role {
+    Unknown,
+    Caller,
+    Callee,
+  };
+
   explicit SignalingSocket(QObject* parent = nullptr);
 
 

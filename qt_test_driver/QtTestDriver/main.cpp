@@ -1,6 +1,11 @@
 ﻿#include "QtTestDriver.h"
+
+#include "rtc_base/ssl_adapter.h"
+
 #include <QtWidgets/QApplication>
 #include <QDebug>
+
+
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -23,7 +28,15 @@ int main(int argc, char *argv[])
 
     createConsole();  // 创建控制台窗口
 
+    // 初始化 WebRTC 的 SSL 模块
+    rtc::InitializeSSL();
+
     QtTestDriver w;
     w.show();
-    return a.exec();
+    int result = a.exec();
+
+    // 清理 WebRTC 的 SSL 模块
+    rtc::CleanupSSL();
+
+    return result;
 }

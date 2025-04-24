@@ -43,10 +43,30 @@
     <ClCompile Include="SignalingSocket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WebRTCClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_video_capturer.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vcm_capturer.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="SignalingSocket.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="WebRTCClient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_video_capturer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vcm_capturer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
