@@ -36,7 +36,7 @@ QtTestDriver::~QtTestDriver()
 
 void QtTestDriver::onConnectClicked() {
     if (signalingSocket_->isConnected()) {
-        qDebug() << u8"已经建立连接，无需重复连接";
+        qDebug() << "已经建立连接，无需重复连接";
         return;
     }
 
@@ -44,7 +44,7 @@ void QtTestDriver::onConnectClicked() {
     quint16 port = ui.lineEdit_port->text().toUShort();
 
     if (ip.isEmpty() || port == 0) {
-        qDebug() << u8"请输入 IP 和端口";
+        qDebug() << "请输入 IP 和端口";
         return;
     }
 
@@ -53,12 +53,12 @@ void QtTestDriver::onConnectClicked() {
 
 void QtTestDriver::onStartMirrorClicked() {
     if (!signalingSocket_->isConnected()) {
-        qDebug() << u8"请先建立信令连接";
+        qDebug() << "请先建立信令连接";
         return;
     }
 
     if (!webrtcClient_->init()) {
-      qDebug() << u8"WebRTC 初始化失败";
+      qDebug() << "WebRTC 初始化失败";
       return;
     }
 
@@ -72,15 +72,15 @@ void QtTestDriver::onStopMirrorClicked() {
 // 连接成功
 void QtTestDriver::onConnected() {
     if (signalingSocket_->role() == SignalingSocket::Role::Caller) {
-        qDebug() << u8"[Caller] 信令连接建立，等待 Start 按钮开始镜像";
+        qDebug() << "[Caller] 信令连接建立，等待 Start 按钮开始镜像";
     } else {
-        qDebug() << u8"[Callee] 已建立连接，等待对方发送 offer";
+        qDebug() << "[Callee] 已建立连接，等待对方发送 offer";
     }
 }
 
 // 接收消息（可以是 offer / answer / ice）
 void QtTestDriver::onMessageReceived(const QString& msg) {
-    qDebug() << u8"收到信令消息：" << msg;
+    qDebug() << "收到信令消息：" << msg;
 
     QJsonDocument doc = QJsonDocument::fromJson(msg.toUtf8());
     if (!doc.isObject())
@@ -92,7 +92,7 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
 
     if ((type == "offer" || type == "answer") && !sdp.isEmpty()) {
         if (!webrtcClient_->init()) {
-          qDebug() << u8"WebRTC 初始化失败";
+          qDebug() << "WebRTC 初始化失败";
           return;
         }
 
@@ -102,7 +102,7 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
 
         if (type == "offer" &&
             signalingSocket_->role() == SignalingSocket::Role::Callee) {
-            qDebug() << u8"收到对方 offer，准备创建 answer";
+            qDebug() << "收到对方 offer，准备创建 answer";
             webrtcClient_->createAnswer();
         }
 
@@ -134,9 +134,9 @@ void QtTestDriver::onIceCandidateReady(const std::string& sdpMid,
 }
 
 void QtTestDriver::onDisconnected() {
-    qDebug() << u8"对方断开连接";
+    qDebug() << "对方断开连接";
 }
 
 void QtTestDriver::onSocketError(const QString& error) {
-    qDebug() << u8"连接错误：" << error;
+    qDebug() << "连接错误：" << error;
 }

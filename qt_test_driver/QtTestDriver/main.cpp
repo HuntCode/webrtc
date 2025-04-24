@@ -18,12 +18,20 @@ void createConsole() {
   freopen("CONOUT$", "w", stderr);
   freopen("CONIN$", "r", stdin);
 
-  qDebug() << u8"控制台已创建，qDebug 可以打印了！";
+  qDebug() << "控制台已创建，qDebug 可以打印了！";
 #endif
+}
+
+void myMessageOutput(QtMsgType type,
+                     const QMessageLogContext& context,
+                     const QString& msg) {
+  fprintf(stderr, "[QtLog] %s\n", msg.toLocal8Bit().constData());
+  fflush(stderr);
 }
 
 int main(int argc, char *argv[])
 {
+    qInstallMessageHandler(myMessageOutput);
     QApplication a(argc, argv);
 
     createConsole();  // 创建控制台窗口

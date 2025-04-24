@@ -1,6 +1,7 @@
 ﻿#include "SignalingSocket.h"
 #include <QDebug>
 
+
 SignalingSocket::SignalingSocket(QObject* parent)
     : QObject(parent) {
     server_ = new QTcpServer(this);
@@ -20,7 +21,7 @@ void SignalingSocket::startListening(quint16 port) {
       emit errorOccurred("监听失败: " + server_->errorString());
       return;
     }
-    qDebug() << u8"监听中，端口：" << port;
+    qDebug() << "监听中，端口：" << port;
 }
 
 void SignalingSocket::connectToHost(const QString& ip, quint16 port) {
@@ -46,7 +47,7 @@ void SignalingSocket::onNewConnection() {
     connect(socket_, &QTcpSocket::disconnected, this, &SignalingSocket::onSocketDisconnected);
     connect(socket_, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred), this, &SignalingSocket::onSocketError);
 
-    qDebug() << u8"[Callee] 客户端连接成功";
+    qDebug() << "[Callee] 客户端连接成功";
     emit connected();
 }
 
@@ -70,7 +71,7 @@ void SignalingSocket::onReadyRead() {
 }
 
 void SignalingSocket::onSocketDisconnected() {
-    qDebug() << u8"连接已断开";
+    qDebug() << "连接已断开";
     emit disconnected();
     socket_->deleteLater();
     socket_ = nullptr;
