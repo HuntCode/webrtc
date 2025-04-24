@@ -47,8 +47,8 @@ class DummySetSessionDescriptionObserver
   }
   virtual void OnSuccess() { RTC_LOG(LS_INFO) << __FUNCTION__; }
   virtual void OnFailure(webrtc::RTCError error) {
-    //RTC_LOG(LS_INFO) << __FUNCTION__ << " " << ToString(error.type()) << ": "
-    //                 << error.message();
+    RTC_LOG(LS_INFO) << __FUNCTION__ << " " << ToString(error.type()) << ": "
+                     << error.message();
   }
 };
 
@@ -178,32 +178,36 @@ void WebRTCClient::AddTracks() {
       return;  // Already added tracks.
     }
 
-    rtc::scoped_refptr<webrtc::AudioTrackInterface> audio_track(
-        peer_connection_factory_->CreateAudioTrack(
-            kAudioLabel,
-            peer_connection_factory_->CreateAudioSource(cricket::AudioOptions())
-                .get()));
-    auto result_or_error = peer_connection_->AddTrack(audio_track, {kStreamId});
-    if (!result_or_error.ok()) {
-      RTC_LOG(LS_ERROR) << "Failed to add audio track to PeerConnection: "
-                        << result_or_error.error().message();
-    }
-
-    rtc::scoped_refptr<CapturerTrackSource> video_device =
-        CapturerTrackSource::Create();
-    if (video_device) {
-      rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track_(
-          peer_connection_factory_->CreateVideoTrack(video_device, kVideoLabel));
-      //main_wnd_->StartLocalRenderer(video_track_.get());
-
-      result_or_error = peer_connection_->AddTrack(video_track_, {kStreamId});
+    signaling_thread_->PostTask([this]() {
+      rtc::scoped_refptr<webrtc::AudioTrackInterface> audio_track(
+          peer_connection_factory_->CreateAudioTrack(
+              kAudioLabel, peer_connection_factory_
+                               ->CreateAudioSource(cricket::AudioOptions())
+                               .get()));
+      auto result_or_error =
+          peer_connection_->AddTrack(audio_track, {kStreamId});
       if (!result_or_error.ok()) {
-        RTC_LOG(LS_ERROR) << "Failed to add video track to PeerConnection: "
+        RTC_LOG(LS_ERROR) << "Failed to add audio track to PeerConnection: "
                           << result_or_error.error().message();
       }
-    } else {
-      RTC_LOG(LS_ERROR) << "OpenVideoCaptureDevice failed";
-    }
+
+      rtc::scoped_refptr<CapturerTrackSource> video_device =
+          CapturerTrackSource::Create();
+      if (video_device) {
+        rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track_(
+            peer_connection_factory_->CreateVideoTrack(video_device,
+                                                       kVideoLabel));
+        // main_wnd_->StartLocalRenderer(video_track_.get());
+
+        result_or_error = peer_connection_->AddTrack(video_track_, {kStreamId});
+        if (!result_or_error.ok()) {
+          RTC_LOG(LS_ERROR) << "Failed to add video track to PeerConnection: "
+                            << result_or_error.error().message();
+        }
+      } else {
+        RTC_LOG(LS_ERROR) << "OpenVideoCaptureDevice failed";
+      }
+    });
 }
 
 void WebRTCClient::createOffer() {
@@ -240,11 +244,11 @@ void WebRTCClient::addIceCandidate(const std::string& sdpMid,
 }
 
 void WebRTCClient::onLocalSdpReady(LocalSdpReadyHandler cb) {
-    on_local_sdp_ = std::move(cb);
+    on_local_sdp_ = cb;
 }
 
 void WebRTCClient::onIceCandidateReady(IceCandidateReadyHandler cb) {
-    on_ice_candidate_ = std::move(cb);
+    on_ice_candidate_ = cb;
 }
 
 void WebRTCClient::onRemoteFrame(RemoteFrameHandler cb) {

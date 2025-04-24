@@ -114,23 +114,38 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
 }
 
 void QtTestDriver::onLocalSdpReady(const std::string& type, const std::string& sdp) {
-    QJsonObject obj;
-    obj["type"] = QString::fromStdString(type);
-    obj["sdp"] = QString::fromStdString(sdp);
-    signalingSocket_->sendMessage(
-        QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    QString typeStr = QString::fromStdString(type);
+    QString sdpStr = QString::fromStdString(sdp);
+
+    QMetaObject::invokeMethod(this, [this, typeStr, sdpStr]() {
+      qDebug() << "[Caller] 本地 SDP 准备好，主线程中发送：" << typeStr;
+
+      QJsonObject obj;
+      obj["type"] = typeStr;
+      obj["sdp"] = sdpStr;
+
+      signalingSocket_->sendMessage(
+          QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    });
 }
 
 void QtTestDriver::onIceCandidateReady(const std::string& sdpMid,
                                        int sdpMLineIndex,
                                        const std::string& candidate) {
-    QJsonObject obj;
-    obj["type"] = "ice";
-    obj["sdpMid"] = QString::fromStdString(sdpMid);
-    obj["sdpMLineIndex"] = sdpMLineIndex;
-    obj["candidate"] = QString::fromStdString(candidate);
-    signalingSocket_->sendMessage(
-        QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    QString sdpMidStr = QString::fromStdString(sdpMid);
+    QString candidateStr = QString::fromStdString(candidate);
+
+    QMetaObject::invokeMethod(this, [this, sdpMidStr, sdpMLineIndex, candidateStr]() {
+        qDebug() << "[Caller] 本地 ICECandidate 准备好，主线程中发送";
+
+        QJsonObject obj;
+        obj["type"] = "ice";
+        obj["sdpMid"] = sdpMidStr;
+        obj["sdpMLineIndex"] = sdpMLineIndex;
+        obj["candidate"] = candidateStr;
+        signalingSocket_->sendMessage(
+          QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    });
 }
 
 void QtTestDriver::onDisconnected() {
