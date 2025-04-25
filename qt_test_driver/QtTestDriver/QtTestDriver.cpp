@@ -115,11 +115,8 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
         webrtcClient_->setRemoteDescription(sdp.toStdString(),
                                           type.toStdString());
 
-        if (type == "offer" &&
-            webrtcClient_->role() == WebRTCClient::SessionRole::Callee) {
-            qDebug() << "收到对方 offer，准备创建 answer";
-            webrtcClient_->createAnswer();
-        }
+        qDebug() << "收到对方 offer，准备创建 answer";
+        webrtcClient_->createAnswer();
 
     } else if (type == "answer" && !sdp.isEmpty()) {
         // 无论 caller 还是 callee 都要先设置远端 SDP
