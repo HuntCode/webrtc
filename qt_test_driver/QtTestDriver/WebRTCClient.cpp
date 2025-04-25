@@ -86,6 +86,13 @@ class CapturerTrackSource : public webrtc::VideoTrackSource {
 };
 
 WebRTCClient::WebRTCClient() {
+}
+
+WebRTCClient::~WebRTCClient() {
+    uninit();
+}
+
+bool WebRTCClient::init() {
     local_renderer_  = std::make_unique<VideoRenderer>();
     local_renderer_->SetFrameCallback([this](const webrtc::VideoFrame& frame) {
         if (on_local_frame_) 
@@ -97,13 +104,7 @@ WebRTCClient::WebRTCClient() {
         if (on_remote_frame_) 
             on_remote_frame_(frame);
     });
-}
 
-WebRTCClient::~WebRTCClient() {
-    uninit();
-}
-
-bool WebRTCClient::init() {
     network_thread_ = rtc::Thread::CreateWithSocketServer();
     network_thread_->SetName("network_thread", nullptr);
     network_thread_->Start();
@@ -228,11 +229,15 @@ void WebRTCClient::AddTracks() {
 }
 
 void WebRTCClient::createOffer() {
+    sessionRole_ = SessionRole::Caller;
+
     if (peer_connection_)
         peer_connection_->CreateOffer(this, webrtc::PeerConnectionInterface::RTCOfferAnswerOptions());
 }
 
 void WebRTCClient::createAnswer() {
+    sessionRole_ = SessionRole::Callee;
+
     if (peer_connection_)
         peer_connection_->CreateAnswer(this, webrtc::PeerConnectionInterface::RTCOfferAnswerOptions());
 }

@@ -82,15 +82,15 @@ void QtTestDriver::onStartMirrorClicked() {
 
 void QtTestDriver::onStopMirrorClicked() {
     webrtcClient_->uninit();
+
+    QJsonObject byeMsg;
+    byeMsg["type"] = "bye";
+    signalingSocket_->sendMessage(QJsonDocument(byeMsg).toJson(QJsonDocument::Compact));
 }
 
 // 连接成功
 void QtTestDriver::onConnected() {
-    if (signalingSocket_->role() == SignalingSocket::Role::Caller) {
-        qDebug() << "[Caller] 信令连接建立，等待 Start 按钮开始镜像";
-    } else {
-        qDebug() << "[Callee] 已建立连接，等待对方发送 offer";
-    }
+    qDebug() << "已建立连接，可以发起投屏";
 }
 
 // 接收消息（可以是 offer / answer / ice）
@@ -116,7 +116,7 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
                                           type.toStdString());
 
         if (type == "offer" &&
-            signalingSocket_->role() == SignalingSocket::Role::Callee) {
+            webrtcClient_->role() == WebRTCClient::SessionRole::Callee) {
             qDebug() << "收到对方 offer，准备创建 answer";
             webrtcClient_->createAnswer();
         }
@@ -130,6 +130,14 @@ void QtTestDriver::onMessageReceived(const QString& msg) {
       webrtcClient_->addIceCandidate(obj["sdpMid"].toString().toUtf8().constData(),
                                      obj["sdpMLineIndex"].toInt(),
                                      obj["candidate"].toString().toUtf8().constData());
+    } else if (type == "bye") {
+      qDebug() << "收到 bye 消息，销毁资源";
+
+      // 清理 WebRTC 资源
+      webrtcClient_->uninit();
+
+      // 如果有 UI 显示，需要清空画面
+      // remoteRenderer_->Clear(); 或者 label->clear()
     }
 }
 
