@@ -170,6 +170,7 @@ void QtTestDriver::onIceCandidateReady(const std::string& sdpMid,
 
 void QtTestDriver::onDisconnected() {
     qDebug() << "对方断开连接";
+    webrtcClient_->uninit();
 }
 
 void QtTestDriver::onSocketError(const QString& error) {

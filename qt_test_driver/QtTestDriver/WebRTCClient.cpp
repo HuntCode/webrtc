@@ -148,6 +148,17 @@ bool WebRTCClient::init() {
 }
 
 void WebRTCClient::uninit() {
+    // 清理本地和远端渲染器
+    if (local_renderer_) {
+        local_renderer_->SetTrack(nullptr);
+        local_renderer_ = nullptr;
+    }
+
+    if (remote_renderer_) {
+        remote_renderer_->SetTrack(nullptr);
+        remote_renderer_ = nullptr;
+    }
+
     DeletePeerConnection();
     if (peer_connection_factory_) {
       peer_connection_factory_ = nullptr;
@@ -155,10 +166,6 @@ void WebRTCClient::uninit() {
       worker_thread_->Stop();
       signaling_thread_->Stop();
     }
-
-    // 清理本地和远端渲染器
-    local_renderer_ = nullptr;
-    remote_renderer_ = nullptr;
 }
 
 bool WebRTCClient::createPeerConnection() {
@@ -178,7 +185,7 @@ bool WebRTCClient::createPeerConnection() {
 }
 
 void WebRTCClient::DeletePeerConnection() {
-    RTC_LOG(LS_INFO) << "[WebRTCClient] 停止并清理 PeerConnection";
+    qDebug() << "[WebRTCClient] 停止并清理 PeerConnection";
     if (peer_connection_) {
         peer_connection_->Close();
         peer_connection_ = nullptr;
