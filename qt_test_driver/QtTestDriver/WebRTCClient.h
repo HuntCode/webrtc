@@ -15,11 +15,15 @@
 #include "modules/video_capture/video_capture.h"
 #include "modules/video_capture/video_capture_factory.h"
 
+// 前向声明 VideoRenderer
+class VideoRenderer;
+
 class WebRTCClient : public webrtc::PeerConnectionObserver,
                      public webrtc::CreateSessionDescriptionObserver {
 public:
     typedef std::function<void(const std::string& type, const std::string& sdp)> LocalSdpReadyHandler;
     typedef std::function<void(const std::string& sdpMid, int sdpMLineIndex, const std::string& candidate)> IceCandidateReadyHandler;
+    typedef std::function<void(const webrtc::VideoFrame& frame)> LocalFrameHandler;
     typedef std::function<void(const webrtc::VideoFrame& frame)> RemoteFrameHandler;
 
     explicit WebRTCClient();
@@ -38,6 +42,7 @@ public:
     // 回调注册函数
     void onLocalSdpReady(LocalSdpReadyHandler cb);
     void onIceCandidateReady(IceCandidateReadyHandler cb);
+    void onLocalFrame(LocalFrameHandler cb);
     void onRemoteFrame(RemoteFrameHandler cb);
 
 private:
@@ -45,10 +50,10 @@ private:
     void OnSignalingChange(webrtc::PeerConnectionInterface::SignalingState new_state) override {};
     void OnAddStream(rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) override {};
     void OnDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface> channel) override {}
-    void OnTrack(rtc::scoped_refptr<webrtc::RtpTransceiverInterface> transceiver) override;
     void OnIceConnectionChange(webrtc::PeerConnectionInterface::IceConnectionState new_state) override {}
     void OnIceGatheringChange(webrtc::PeerConnectionInterface::IceGatheringState new_state) override {}
     void OnIceCandidate(const webrtc::IceCandidateInterface* candidate) override;
+    void OnTrack(rtc::scoped_refptr<webrtc::RtpTransceiverInterface> transceiver) override;
 
     // CreateSessionDescriptionObserver
     void OnSuccess(webrtc::SessionDescriptionInterface* desc) override;
@@ -65,10 +70,14 @@ private:
     std::unique_ptr<rtc::Thread> worker_thread_;
     std::unique_ptr<rtc::Thread> signaling_thread_;
 
+    // 视频渲染器（本地 / 远端）
+    std::unique_ptr<VideoRenderer> local_renderer_;
+    std::unique_ptr<VideoRenderer> remote_renderer_;
     
     // 回调函数
     LocalSdpReadyHandler on_local_sdp_;
     IceCandidateReadyHandler on_ice_candidate_;
+    LocalFrameHandler on_local_frame_;
     RemoteFrameHandler on_remote_frame_;
 };
 

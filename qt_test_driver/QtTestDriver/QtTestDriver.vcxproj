@@ -113,6 +113,7 @@ wmcodecdspuuid.lib
     <ClCompile Include="SignalingSocket.cpp" />
     <ClCompile Include="test_video_capturer.cc" />
     <ClCompile Include="vcm_capturer.cc" />
+    <ClCompile Include="VideoRenderer.cpp" />
     <ClCompile Include="WebRTCClient.cpp" />
     <QtRcc Include="QtTestDriver.qrc" />
     <QtUic Include="QtTestDriver.ui" />
@@ -126,6 +127,7 @@ wmcodecdspuuid.lib
   <ItemGroup>
     <ClInclude Include="test_video_capturer.h" />
     <ClInclude Include="vcm_capturer.h" />
+    <ClInclude Include="VideoRenderer.h" />
     <ClInclude Include="WebRTCClient.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

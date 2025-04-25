@@ -33,6 +33,8 @@ private slots:
                              const std::string& candidate);
 
 private:
+    void renderVideoFrame(const webrtc::VideoFrame& frame, QLabel* label);
+
     Ui::QtTestDriverClass ui;
     SignalingSocket* signalingSocket_;
     rtc::scoped_refptr<WebRTCClient> webrtcClient_;

@@ -1,4 +1,5 @@
 ﻿#include "WebRTCClient.h"
+#include "VideoRenderer.h"
 
 #include "absl/memory/memory.h"
 #include "absl/types/optional.h"
@@ -22,7 +23,7 @@
 #include "api/video_codecs/video_encoder_factory_template_libvpx_vp8_adapter.h"
 #include "api/video_codecs/video_encoder_factory_template_libvpx_vp9_adapter.h"
 #include "api/video_codecs/video_encoder_factory_template_open_h264_adapter.h"
-#include <api/video/i420_buffer.h>
+#include "api/video/i420_buffer.h"
 #include "examples/peerconnection/client/defaults.h"
 #include "modules/audio_device/include/audio_device.h"
 #include "modules/audio_processing/include/audio_processing.h"
@@ -39,8 +40,7 @@ const char kAudioLabel[] = "audio_label";
 const char kVideoLabel[] = "video_label";
 const char kStreamId[] = "stream_id";
 
-class DummySetSessionDescriptionObserver
-    : public webrtc::SetSessionDescriptionObserver {
+class DummySetSessionDescriptionObserver : public webrtc::SetSessionDescriptionObserver {
  public:
   static rtc::scoped_refptr<DummySetSessionDescriptionObserver> Create() {
     return rtc::make_ref_counted<DummySetSessionDescriptionObserver>();
@@ -59,15 +59,13 @@ class CapturerTrackSource : public webrtc::VideoTrackSource {
     const size_t kHeight = 480;
     const size_t kFps = 30;
     std::unique_ptr<webrtc::test::VcmCapturer> capturer;
-    std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo> info(
-        webrtc::VideoCaptureFactory::CreateDeviceInfo());
+    std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo> info(webrtc::VideoCaptureFactory::CreateDeviceInfo());
     if (!info) {
       return nullptr;
     }
     int num_devices = info->NumberOfDevices();
     for (int i = 0; i < num_devices; ++i) {
-      capturer = absl::WrapUnique(
-          webrtc::test::VcmCapturer::Create(kWidth, kHeight, kFps, i));
+      capturer = absl::WrapUnique(webrtc::test::VcmCapturer::Create(kWidth, kHeight, kFps, i));
       if (capturer) {
         return rtc::make_ref_counted<CapturerTrackSource>(std::move(capturer));
       }
@@ -77,8 +75,7 @@ class CapturerTrackSource : public webrtc::VideoTrackSource {
   }
 
  protected:
-  explicit CapturerTrackSource(
-      std::unique_ptr<webrtc::test::VcmCapturer> capturer)
+  explicit CapturerTrackSource(std::unique_ptr<webrtc::test::VcmCapturer> capturer)
       : VideoTrackSource(/*remote=*/false), capturer_(std::move(capturer)) {}
 
  private:
@@ -88,9 +85,23 @@ class CapturerTrackSource : public webrtc::VideoTrackSource {
   std::unique_ptr<webrtc::test::VcmCapturer> capturer_;
 };
 
-WebRTCClient::WebRTCClient() {}
+WebRTCClient::WebRTCClient() {
+    local_renderer_  = std::make_unique<VideoRenderer>();
+    local_renderer_->SetFrameCallback([this](const webrtc::VideoFrame& frame) {
+        if (on_local_frame_) 
+            on_local_frame_(frame);
+    });
 
-WebRTCClient::~WebRTCClient() {}
+    remote_renderer_ = std::make_unique<VideoRenderer>();
+    remote_renderer_->SetFrameCallback([this](const webrtc::VideoFrame& frame) {
+        if (on_remote_frame_) 
+            on_remote_frame_(frame);
+    });
+}
+
+WebRTCClient::~WebRTCClient() {
+    uninit();
+}
 
 bool WebRTCClient::init() {
     network_thread_ = rtc::Thread::CreateWithSocketServer();
@@ -144,6 +155,10 @@ void WebRTCClient::uninit() {
       worker_thread_->Stop();
       signaling_thread_->Stop();
     }
+
+    // 清理本地和远端渲染器
+    local_renderer_ = nullptr;
+    remote_renderer_ = nullptr;
 }
 
 bool WebRTCClient::createPeerConnection() {
@@ -155,9 +170,7 @@ bool WebRTCClient::createPeerConnection() {
     //config.servers.push_back(server);
 
     webrtc::PeerConnectionDependencies pc_dependencies(this);
-    auto error_or_peer_connection =
-        peer_connection_factory_->CreatePeerConnectionOrError(
-            config, std::move(pc_dependencies));
+    auto error_or_peer_connection = peer_connection_factory_->CreatePeerConnectionOrError(config, std::move(pc_dependencies));
     if (error_or_peer_connection.ok()) {
       peer_connection_ = std::move(error_or_peer_connection.value());
     }
@@ -166,7 +179,6 @@ bool WebRTCClient::createPeerConnection() {
 
 void WebRTCClient::DeletePeerConnection() {
     RTC_LOG(LS_INFO) << "[WebRTCClient] 停止并清理 PeerConnection";
-    qDebug() << "[WebRTCClient] 停止并清理 PeerConnection";
     if (peer_connection_) {
         peer_connection_->Close();
         peer_connection_ = nullptr;
@@ -175,58 +187,52 @@ void WebRTCClient::DeletePeerConnection() {
 
 void WebRTCClient::AddTracks() {
     if (!peer_connection_->GetSenders().empty()) {
-      return;  // Already added tracks.
+        return;  // Already added tracks.
     }
 
     signaling_thread_->PostTask([this]() {
       rtc::scoped_refptr<webrtc::AudioTrackInterface> audio_track(
           peer_connection_factory_->CreateAudioTrack(
-              kAudioLabel, peer_connection_factory_
-                               ->CreateAudioSource(cricket::AudioOptions())
-                               .get()));
-      auto result_or_error =
-          peer_connection_->AddTrack(audio_track, {kStreamId});
+              kAudioLabel, peer_connection_factory_->CreateAudioSource(cricket::AudioOptions()).get()));
+      auto result_or_error = peer_connection_->AddTrack(audio_track, {kStreamId});
       if (!result_or_error.ok()) {
-        RTC_LOG(LS_ERROR) << "Failed to add audio track to PeerConnection: "
+          RTC_LOG(LS_ERROR) << "Failed to add audio track to PeerConnection: "
                           << result_or_error.error().message();
       }
 
-      rtc::scoped_refptr<CapturerTrackSource> video_device =
-          CapturerTrackSource::Create();
+      rtc::scoped_refptr<CapturerTrackSource> video_device = CapturerTrackSource::Create();
       if (video_device) {
         rtc::scoped_refptr<webrtc::VideoTrackInterface> video_track_(
-            peer_connection_factory_->CreateVideoTrack(video_device,
-                                                       kVideoLabel));
-        // main_wnd_->StartLocalRenderer(video_track_.get());
+            peer_connection_factory_->CreateVideoTrack(video_device, kVideoLabel));
+
+        // 设置给本地renderer
+        if (local_renderer_) {
+            local_renderer_->SetTrack(video_track_.get());
+        }
 
         result_or_error = peer_connection_->AddTrack(video_track_, {kStreamId});
         if (!result_or_error.ok()) {
-          RTC_LOG(LS_ERROR) << "Failed to add video track to PeerConnection: "
-                            << result_or_error.error().message();
+            RTC_LOG(LS_ERROR) << "Failed to add video track to PeerConnection: " << result_or_error.error().message();
         }
       } else {
-        RTC_LOG(LS_ERROR) << "OpenVideoCaptureDevice failed";
+            RTC_LOG(LS_ERROR) << "OpenVideoCaptureDevice failed";
       }
     });
 }
 
 void WebRTCClient::createOffer() {
-    if (!peer_connection_)
-      return;
-    peer_connection_->CreateOffer(this, webrtc::PeerConnectionInterface::RTCOfferAnswerOptions());
+    if (peer_connection_)
+        peer_connection_->CreateOffer(this, webrtc::PeerConnectionInterface::RTCOfferAnswerOptions());
 }
 
 void WebRTCClient::createAnswer() {
-    if (!peer_connection_) {
-      return;
-    }
-    peer_connection_->CreateAnswer(this, webrtc::PeerConnectionInterface::RTCOfferAnswerOptions());
+    if (peer_connection_)
+        peer_connection_->CreateAnswer(this, webrtc::PeerConnectionInterface::RTCOfferAnswerOptions());
 }
 
 void WebRTCClient::setRemoteDescription(const std::string& sdp,
                                         const std::string& type) {
-    webrtc::SdpType sdp_type =
-        type == "offer" ? webrtc::SdpType::kOffer : webrtc::SdpType::kAnswer;
+    webrtc::SdpType sdp_type = (type == "offer") ? webrtc::SdpType::kOffer : webrtc::SdpType::kAnswer;
     webrtc::SdpParseError error;
     auto desc = webrtc::CreateSessionDescription(sdp_type, sdp, &error);
     peer_connection_->SetRemoteDescription(
@@ -237,18 +243,21 @@ void WebRTCClient::addIceCandidate(const std::string& sdpMid,
                                    int sdpMLineIndex,
                                    const std::string& candidate) {
     webrtc::SdpParseError error;
-    auto ice =
-        webrtc::CreateIceCandidate(sdpMid, sdpMLineIndex, candidate, &error);
+    auto ice = webrtc::CreateIceCandidate(sdpMid, sdpMLineIndex, candidate, &error);
     if (ice)
       peer_connection_->AddIceCandidate(ice);
 }
 
 void WebRTCClient::onLocalSdpReady(LocalSdpReadyHandler cb) {
-    on_local_sdp_ = cb;
+    on_local_sdp_ = std::move(cb);
 }
 
 void WebRTCClient::onIceCandidateReady(IceCandidateReadyHandler cb) {
-    on_ice_candidate_ = cb;
+    on_ice_candidate_ = std::move(cb);
+}
+
+void WebRTCClient::onLocalFrame(LocalFrameHandler cb) {
+    on_local_frame_ = std::move(cb);
 }
 
 void WebRTCClient::onRemoteFrame(RemoteFrameHandler cb) {
@@ -256,8 +265,7 @@ void WebRTCClient::onRemoteFrame(RemoteFrameHandler cb) {
 }
 
 // PeerConnectionObserver
-void WebRTCClient::OnIceCandidate(
-    const webrtc::IceCandidateInterface* candidate) {
+void WebRTCClient::OnIceCandidate(const webrtc::IceCandidateInterface* candidate) {
   std::string sdp;
   candidate->ToString(&sdp);
 
@@ -266,28 +274,29 @@ void WebRTCClient::OnIceCandidate(
   }
 }
 
-// CreateSessionDescriptionObserver
-void WebRTCClient::OnSuccess(webrtc::SessionDescriptionInterface* desc) {
-  peer_connection_->SetLocalDescription(
-      DummySetSessionDescriptionObserver::Create().get(), desc);
-
-  std::string sdp;
-  desc->ToString(&sdp);
-
-  if (on_local_sdp_)
-    on_local_sdp_(webrtc::SdpTypeToString(desc->GetType()), sdp);
-}
-
-void WebRTCClient::OnFailure(webrtc::RTCError error) {
-  RTC_LOG(LS_INFO) << u8"创建 offer/answer 失败:"
-             << error.message();
-}
-
 void WebRTCClient::OnTrack(
     rtc::scoped_refptr<webrtc::RtpTransceiverInterface> transceiver) {
   auto track = transceiver->receiver()->track();
   if (track && track->kind() == webrtc::MediaStreamTrackInterface::kVideoKind) {
     RTC_LOG(LS_INFO) << u8"收到远端视频流";
-    // 后续这里将 VideoFrame 转为 QImage，emit 给 Qt UI
+    auto* video_track = static_cast<webrtc::VideoTrackInterface*>(track.get());
+    if (remote_renderer_){
+      remote_renderer_->SetTrack(video_track);
+    }
   }
+}
+
+// CreateSessionDescriptionObserver
+void WebRTCClient::OnSuccess(webrtc::SessionDescriptionInterface* desc) {
+    peer_connection_->SetLocalDescription(DummySetSessionDescriptionObserver::Create().get(), desc);
+
+    std::string sdp;
+    desc->ToString(&sdp);
+
+    if (on_local_sdp_)
+      on_local_sdp_(webrtc::SdpTypeToString(desc->GetType()), sdp);
+}
+
+void WebRTCClient::OnFailure(webrtc::RTCError error) {
+    RTC_LOG(LS_INFO) << u8"创建 offer/answer 失败:" << error.message();
 }
