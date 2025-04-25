@@ -8,14 +8,6 @@ SignalingSocket::SignalingSocket(QObject* parent)
     connect(server_, &QTcpServer::newConnection, this, &SignalingSocket::onNewConnection);
 }
 
-void SignalingSocket::setRole(Role role) {
-    role_ = role;
-}
-
-bool SignalingSocket::isConnected() const {
-    return socket_ && socket_->state() == QAbstractSocket::ConnectedState;
-}
-
 void SignalingSocket::startListening(quint16 port) {
     if (!server_->listen(QHostAddress::Any, port)) {
       emit errorOccurred("监听失败: " + server_->errorString());
@@ -25,8 +17,6 @@ void SignalingSocket::startListening(quint16 port) {
 }
 
 void SignalingSocket::connectToHost(const QString& ip, quint16 port) {
-    setRole(Role::Caller);
-
     socket_ = new QTcpSocket(this);
     connect(socket_, &QTcpSocket::readyRead, this, &SignalingSocket::onReadyRead);
     connect(socket_, &QTcpSocket::disconnected, this, &SignalingSocket::onSocketDisconnected);
@@ -36,25 +26,28 @@ void SignalingSocket::connectToHost(const QString& ip, quint16 port) {
     socket_->connectToHost(ip, port);
 }
 
+void SignalingSocket::sendMessage(const QString& json) {
+  if (!socket_)
+    return;
+  socket_->write(json.toUtf8() + '\n');  // 以换行符分隔消息
+}
+
+bool SignalingSocket::isConnected() const {
+  return socket_ && socket_->state() == QAbstractSocket::ConnectedState;
+}
+
 void SignalingSocket::onNewConnection() {
     if (socket_)
       return;
 
     socket_ = server_->nextPendingConnection();
 
-    setRole(Role::Callee);
     connect(socket_, &QTcpSocket::readyRead, this, &SignalingSocket::onReadyRead);
     connect(socket_, &QTcpSocket::disconnected, this, &SignalingSocket::onSocketDisconnected);
     connect(socket_, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred), this, &SignalingSocket::onSocketError);
 
     qDebug() << "[Callee] 客户端连接成功";
     emit connected();
-}
-
-void SignalingSocket::sendMessage(const QString& json) {
-    if (!socket_)
-      return;
-    socket_->write(json.toUtf8() + '\n');  // 以换行符分隔消息
 }
 
 void SignalingSocket::onReadyRead() {

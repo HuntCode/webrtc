@@ -21,6 +21,12 @@ class VideoRenderer;
 class WebRTCClient : public webrtc::PeerConnectionObserver,
                      public webrtc::CreateSessionDescriptionObserver {
 public:
+    enum class SessionRole {
+        Unknown,
+        Caller,
+        Callee
+    };
+
     typedef std::function<void(const std::string& type, const std::string& sdp)> LocalSdpReadyHandler;
     typedef std::function<void(const std::string& sdpMid, int sdpMLineIndex, const std::string& candidate)> IceCandidateReadyHandler;
     typedef std::function<void(const webrtc::VideoFrame& frame)> LocalFrameHandler;
@@ -45,6 +51,7 @@ public:
     void onLocalFrame(LocalFrameHandler cb);
     void onRemoteFrame(RemoteFrameHandler cb);
 
+    SessionRole role() const { return sessionRole_; }
 private:
     // PeerConnectionObserver
     void OnSignalingChange(webrtc::PeerConnectionInterface::SignalingState new_state) override {};
@@ -79,6 +86,8 @@ private:
     IceCandidateReadyHandler on_ice_candidate_;
     LocalFrameHandler on_local_frame_;
     RemoteFrameHandler on_remote_frame_;
+
+    SessionRole sessionRole_ = SessionRole::Unknown;
 };
 
 #endif  // WEBRTC_CLIENT_H
