@@ -1,4 +1,6 @@
-﻿#include "QtTestDriver.h"
+﻿#include "third_party/libyuv/include/libyuv/convert_argb.h"
+
+#include "QtTestDriver.h"
 
 #include <QDebug>
 #include <QJsonDocument>
@@ -179,37 +181,18 @@ void QtTestDriver::renderVideoFrame(const webrtc::VideoFrame& frame,
   if (!label)
     return;
 
-  const webrtc::I420BufferInterface* buffer =
-      frame.video_frame_buffer()->GetI420();
+  // 获取 I420 格式的视频帧
+  const webrtc::I420BufferInterface* buffer = frame.video_frame_buffer()->GetI420();
 
-  QImage image(buffer->width(), buffer->height(), QImage::Format_RGB32);
+  // 创建一个 QImage 对象以便渲染
+  QImage image(buffer->width(), buffer->height(), QImage::Format_ARGB32);
 
-  for (int y = 0; y < buffer->height(); ++y) {
-    uint8_t* dst = reinterpret_cast<uint8_t*>(image.scanLine(y));
-    const uint8_t* y_plane = buffer->DataY() + y * buffer->StrideY();
-    const uint8_t* u_plane = buffer->DataU() + (y / 2) * buffer->StrideU();
-    const uint8_t* v_plane = buffer->DataV() + (y / 2) * buffer->StrideV();
+  // 使用 libyuv::I420ToARGB 进行高效的格式转换
+  libyuv::I420ToARGB(buffer->DataY(), buffer->StrideY(), buffer->DataU(),
+                     buffer->StrideU(), buffer->DataV(), buffer->StrideV(),
+                     image.bits(), image.bytesPerLine(), buffer->width(),
+                     buffer->height());
 
-    for (int x = 0; x < buffer->width(); ++x) {
-      int Y = y_plane[x];
-      int U = u_plane[x / 2];
-      int V = v_plane[x / 2];
-
-      int R = Y + 1.402 * (V - 128);
-      int G = Y - 0.344136 * (U - 128) - 0.714136 * (V - 128);
-      int B = Y + 1.772 * (U - 128);
-
-      R = std::clamp(R, 0, 255);
-      G = std::clamp(G, 0, 255);
-      B = std::clamp(B, 0, 255);
-
-      dst[x * 4 + 0] = B;
-      dst[x * 4 + 1] = G;
-      dst[x * 4 + 2] = R;
-      dst[x * 4 + 3] = 255;
-    }
-  }
-
-  label->setPixmap(
-      QPixmap::fromImage(image.scaled(label->size(), Qt::KeepAspectRatio)));
+  // 将转换后的图像显示到 QLabel 中，保持比例缩放
+  label->setPixmap(QPixmap::fromImage(image.scaled(label->size(), Qt::KeepAspectRatio)));
 }
